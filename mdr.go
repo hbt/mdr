@@ -143,7 +143,7 @@ func newUi(g *gocui.Gui) (*ui, error) {
 		{renderView, gocui.KeyPgup, gocui.ModNone, result.pageUp},
 		{renderView, gocui.KeyPgdn, gocui.ModNone, result.pageDown},
 		{renderView, gocui.KeySpace, gocui.ModNone, result.pageDown},
-		{renderView, 'R', gocui.ModNone, result.reload},
+		{renderView, reloadKey, gocui.ModNone, result.reload},
 	}
 
 	for _, kb := range result.keybindings {

@@ -190,9 +190,9 @@ func TestOverlayText(t *testing.T) {
 		msg, want      string
 	}{
 		{"nothing", false, false, "", ""},
-		{"stale", true, false, "", " stale - press R "},
-		{"deleted", true, true, "", " file deleted - press R "},
-		{"deleted without stale flag", false, true, "", " file deleted - press R "},
+		{"stale", true, false, "", " " + staleText + " "},
+		{"deleted", true, true, "", " " + deletedText + " "},
+		{"deleted without stale flag", false, true, "", " " + deletedText + " "},
 		{"msg beats stale", true, false, "stdin: cannot reload", " stdin: cannot reload "},
 		{"msg beats deleted", true, true, "boom", " boom "},
 	}

@@ -7,6 +7,13 @@ import (
 	"time"
 )
 
+// reloadKey is the reload binding; the indicator texts derive from it.
+const (
+	reloadKey   rune = 'r'
+	staleText        = "stale - press " + string(reloadKey)
+	deletedText      = "file deleted - press " + string(reloadKey)
+)
+
 // anchorMinLen is the shortest rendered line usable as a scroll anchor; shorter
 // ones ("", "-", "1.") are too ambiguous to find again after a re-render.
 const anchorMinLen = 4
@@ -98,9 +105,9 @@ func overlayText(stale, deleted bool, msg string) string {
 	case msg != "":
 		return " " + msg + " "
 	case deleted:
-		return " file deleted - press R "
+		return " " + deletedText + " "
 	case stale:
-		return " stale - press R "
+		return " " + staleText + " "
 	}
 	return ""
 }

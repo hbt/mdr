@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// End-to-end tests for the R (reload) key and the stale-file indicator.
+// End-to-end tests for the reload key and the stale-file indicator.
 
 // tempDoc writes content to a fresh file and returns its path.
 func tempDoc(t *testing.T, content string) string {
@@ -57,7 +57,7 @@ func TestReloadShowsNewContent(t *testing.T) {
 	p.waitText("Alpha Original")
 
 	writeDoc(t, path, "# Beta Changed\n")
-	p.send("R")
+	p.send(string(reloadKey))
 	s := p.waitText("Beta Changed")
 	if strings.Contains(s, "Alpha Original") {
 		t.Errorf("old content still visible:\n%s", s)
@@ -80,16 +80,16 @@ func TestReloadKeepsScrollPosition(t *testing.T) {
 	top := first(s)
 
 	// same content: top row must not move
-	p.send("R")
+	p.send(string(reloadKey))
 	if got := p.settle(); first(got) != top {
 		t.Errorf("top row changed on plain reload: %q -> %q", top, first(got))
 	}
 
 	// lines inserted above the viewport: same top text must stay
 	writeDoc(t, path, "# Head\n\n"+insertedAbove()+numbered("", 100))
-	p.waitText("stale - press R")
-	p.send("R")
-	p.waitFor("indicator cleared", func(s string) bool { return !strings.Contains(s, "stale - press R") })
+	p.waitText(staleText)
+	p.send(string(reloadKey))
+	p.waitFor("indicator cleared", func(s string) bool { return !strings.Contains(s, staleText) })
 	if got := p.settle(); first(got) != top {
 		t.Errorf("top row after insert above: %q, want %q\n%s", first(got), top, got)
 	}
@@ -120,7 +120,7 @@ func TestReloadShorterFileClamps(t *testing.T) {
 	p.waitText("Line 100")
 
 	writeDoc(t, path, "# Tiny Doc\n\nonly this\n")
-	p.send("R")
+	p.send(string(reloadKey))
 	s := p.waitText("Tiny Doc")
 	if !strings.Contains(s, "only this") {
 		t.Errorf("short content not fully visible (offset not clamped):\n%s", s)
@@ -136,22 +136,22 @@ func TestStaleIndicatorAppearsAndClears(t *testing.T) {
 	}
 
 	writeDoc(t, path, "# Beta Changed, longer now\n")
-	s = p.waitText("stale - press R")
+	s = p.waitText(staleText)
 	row, col := lastRow(s)
-	if row != "stale - press R" {
+	if row != staleText {
 		t.Errorf("last row = %q, want the stale indicator", row)
 	}
 	// the pane trims the trailing space, so the text ends on the last column
-	if want := paneW - len("stale - press R") - 1; col != want {
+	if want := paneW - len(staleText) - 1; col != want {
 		t.Errorf("indicator at column %d, want right-aligned at %d:\n%s", col, want, s)
 	}
 	if !strings.Contains(s, "Alpha Original") {
-		t.Errorf("content must not change before R:\n%s", s)
+		t.Errorf("content must not change before reload:\n%s", s)
 	}
 
-	p.send("R")
+	p.send(string(reloadKey))
 	p.waitText("Beta Changed")
-	p.waitFor("indicator cleared", func(s string) bool { return !strings.Contains(s, "stale - press R") })
+	p.waitFor("indicator cleared", func(s string) bool { return !strings.Contains(s, staleText) })
 	// stays cleared
 	if s := p.settle(); strings.Contains(s, "stale") {
 		t.Errorf("indicator came back after reload:\n%s", s)
@@ -163,16 +163,16 @@ func TestStaleIndicatorAfterResize(t *testing.T) {
 	p := runDoc(t, path)
 	p.waitText("Alpha Original")
 	writeDoc(t, path, "# Beta Changed, longer now\n")
-	p.waitText("stale - press R")
+	p.waitText(staleText)
 
 	if out, err := exec.Command("tmux", "-L", p.socket, "resize-window", "-x", "60", "-y", "12").CombinedOutput(); err != nil {
 		t.Skipf("resize-window unsupported: %v\n%s", err, out)
 	}
 	s := p.waitFor("indicator on last row", func(s string) bool {
 		r := rows(s)
-		return len(r) == 12 && strings.Contains(r[11], "stale - press R")
+		return len(r) == 12 && strings.Contains(r[11], staleText)
 	})
-	if _, col := lastRow(s); col != 60-len("stale - press R")-1 {
+	if _, col := lastRow(s); col != 60-len(staleText)-1 {
 		t.Errorf("indicator not right-aligned at width 60 (col %d):\n%s", col, s)
 	}
 }
@@ -185,9 +185,9 @@ func TestDeletedFileIndicatorAndReloadKeepsContent(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	p.waitText("file deleted - press R")
+	p.waitText(deletedText)
 
-	p.send("R")
+	p.send(string(reloadKey))
 	s := p.waitFor("read error message", func(s string) bool {
 		row, _ := lastRow(s)
 		return row != "" && !strings.Contains(row, "file deleted")
@@ -196,9 +196,9 @@ func TestDeletedFileIndicatorAndReloadKeepsContent(t *testing.T) {
 		t.Errorf("old content lost after failed reload:\n%s", s)
 	}
 
-	// still alive and responsive; file coming back clears things on R
+	// still alive and responsive; file coming back clears things on reload
 	writeDoc(t, path, "# Gamma Restored\n")
-	p.send("R")
+	p.send(string(reloadKey))
 	p.waitText("Gamma Restored")
 	p.waitFor("indicator cleared", func(s string) bool { r, _ := lastRow(s); return r == "" })
 	p.send("q")
@@ -210,7 +210,7 @@ func TestDeletedFileIndicatorAndReloadKeepsContent(t *testing.T) {
 func TestReloadStdinMessage(t *testing.T) {
 	p := start(t, fmt.Sprintf("cat %q | %q", fixture("basic.md"), binPath))
 	p.waitText("Hello Basic")
-	p.send("R")
+	p.send(string(reloadKey))
 	s := p.waitText("stdin: cannot reload")
 	if !strings.Contains(s, "Hello Basic") {
 		t.Errorf("content lost:\n%s", s)
