@@ -18,4 +18,7 @@ install:
 releases:
 	gox -ldflags "$(LDFLAGS)" -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
 
-.PHONY: build install releases
+test:
+	go test ./... -count=1
+
+.PHONY: build install releases test
